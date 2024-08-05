@@ -5,6 +5,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 )
 
 func TestClientShowTagKeys(t *testing.T) {
@@ -37,5 +38,32 @@ func TestClient_ShowFieldKeys(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(tagFieldResult))
 	err = c.DropDatabase(databaseName)
+	require.Nil(t, err)
+}
+
+func TestClient_DropMeasurement(t *testing.T) {
+	c := testDefaultClient(t)
+
+	err := c.DropMeasurement("", "test")
+	require.Contains(t, err.Error(), "empty database name")
+
+	databaseName := randomDatabaseName()
+	err = c.DropMeasurement("test", "")
+	require.Contains(t, err.Error(), "empty measurement name")
+
+	err = c.CreateDatabase(databaseName)
+	require.Nil(t, err)
+	measurement := randomMeasurement()
+
+	err = c.DropMeasurement(databaseName, measurement)
+	require.Nil(t, err)
+
+	p := &Point{}
+	p.Measurement = measurement
+	p.AddField("field", "test")
+	err = c.WritePoint(databaseName, p, func(err error) {})
+	assert.Nil(t, err)
+	time.Sleep(time.Second * 3)
+	err = c.DropMeasurement(databaseName, measurement)
 	require.Nil(t, err)
 }

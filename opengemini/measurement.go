@@ -2,6 +2,9 @@ package opengemini
 
 import (
 	"errors"
+	"io"
+	"net/http"
+	"net/url"
 )
 
 type ValuesResult struct {
@@ -74,4 +77,31 @@ func (c *client) ShowSeries(database, command string) ([]string, error) {
 		series = append(series, strV)
 	}
 	return series, nil
+}
+
+func (c *client) DropMeasurement(database, measurement string) error {
+	if len(database) == 0 {
+		return errors.New("empty database name")
+	}
+	if len(measurement) == 0 {
+		return errors.New("empty measurement name")
+	}
+	req := requestDetails{
+		queryValues: make(url.Values),
+	}
+	req.queryValues.Add("db", database)
+	req.queryValues.Add("q", "DROP MEASUREMENT \""+measurement+"\"")
+	resp, err := c.executeHttpPost("/query", req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return errors.New("read resp failed, error: " + err.Error())
+	}
+	if resp.StatusCode != http.StatusOK {
+		return errors.New("error resp, code: " + resp.Status + "body: " + string(body))
+	}
+	return nil
 }
